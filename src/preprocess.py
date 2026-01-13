@@ -1,11 +1,10 @@
-
 # Import libraries
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
 
-def load_and_clean_data(csv_path) -> pd.DataFrame:
+def load_and_clean_data(csv_path):
     
     """
     Load, clean, and normalize the Pima Diabetes dataset.
@@ -23,23 +22,21 @@ def load_and_clean_data(csv_path) -> pd.DataFrame:
     Returns:
     pd.DataFrame: Cleaned and normalized dataset with 'subject_id'.
     """
-
+    
+    
     # Step 1: Load data
-    df = pd.read_csv(csv_path).copy()
+    df = pd.read_csv(csv_path)
 
+    
     # Step 2: Insert subject_id for traceability
     df.insert(0, 'subject_id', df.index)
 
-
-    # Columns where 0 is invalid and used as missing
-    zero_as_missing = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
-
-    df[zero_as_missing] = df[zero_as_missing].replace(0, np.nan)
-    df = df.dropna().reset_index(drop=True)
-
-
+    
     # Step 3: Set plausible ranges 
+
     # The ranges are adviced by Chatgpt, you can change them in a more reasonable range if it is necessary.
+    # !!! Don't forget to save a new version of cleaned data if you change the range （Just uncomment the line that saves to csv）!!!
+    
     plausible_ranges = {
         "Pregnancies": (0, np.inf),
         "Glucose": (40, 600),
@@ -51,18 +48,27 @@ def load_and_clean_data(csv_path) -> pd.DataFrame:
         "Age": (21, np.inf)
     }
 
+
     # Step 4: Remove rows outside plausible ranges
     for feature, (lower, upper) in plausible_ranges.items():
         df = df[(df[feature] >= lower) & (df[feature] <= upper)]
+        
 
-    # Step 5: Data normalization (2 methods to set the features to be normalized)
+    # !!! Uncomment this line to save the cleaned dataset !!!
+    # df.to_csv("diabetes_cleaned.csv", index=False)
     
-    # Method_1: Set features that going to be normalized.
+
+
+    # Step 5: Data normalization
+    
+    # Set the features to be normalized （2 methods）
+    
+    ## Method_1: Set features that going to be normalized.
     features_to_normalize = ["Pregnancies", "Glucose", "BloodPressure", 
                            "SkinThickness", "Insulin", "BMI", 
                            "DiabetesPedigreeFunction", "Age"]
     
-#     # Method_2: Drop columns that not need to be normalized.
+#     ## Method_2: Drop columns that not need to be normalized.
 #     features_to_normalize = df.columns.drop(["subject_id", "Outcome"])
     
     # Normalization
