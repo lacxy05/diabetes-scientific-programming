@@ -52,30 +52,18 @@ def load_and_clean_data(csv_path):
     # Step 4: Remove rows outside plausible ranges
     for feature, (lower, upper) in plausible_ranges.items():
         df = df[(df[feature] >= lower) & (df[feature] <= upper)]
-        
-
-    # !!! Uncomment this line to save the cleaned dataset !!!
-    # df.to_csv("diabetes_cleaned.csv", index=False)
-    
-
-
-    # Step 5: Data normalization
-    
-    # Set the features to be normalized （2 methods）
-    
-    ## Method_1: Set features that going to be normalized.
-    features_to_normalize = ["Pregnancies", "Glucose", "BloodPressure", 
-                           "SkinThickness", "Insulin", "BMI", 
-                           "DiabetesPedigreeFunction", "Age"]
-    
-#     ## Method_2: Drop columns that not need to be normalized.
-#     features_to_normalize = df.columns.drop(["subject_id", "Outcome"])
-    
-    # Normalization
-    scaler = MinMaxScaler() 
-    df[features_to_normalize] = scaler.fit_transform(df[features_to_normalize])
-    
-    # Reset index after all cleaning
-    df.reset_index(drop=True, inplace=True)
-
+       
     return df
+
+
+if __name__ == "__main__":
+    import os
+    raw_data_path = "data/diabetes.csv"
+
+    if os.path.exists(raw_data_path):
+        print("Loading data from ", raw_data_path)
+        df_clean = load_and_clean_data(raw_data_path)
+        df_clean.to_csv("data/diabetes_cleaned.csv", index=False)
+        print("Data cleaned successfully, saved to data/diabetes_cleaned.csv")
+    else:
+        print(f"File {raw_data_path} does not exist.")
