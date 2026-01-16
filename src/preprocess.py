@@ -34,7 +34,7 @@ def load_and_clean_data(csv_path):
     
     # Step 3: Set plausible ranges 
 
-    # The ranges are based on references listed, but expanded for pathological values in diabetic patients.
+    # The ranges are based on references listed, and expanded for pathological values in diabetic patients.
     # You can change them in a more reasonable range if it is necessary. But don't forget to save a new version of cleaned data if you change the range（Just uncomment the line that saves to csv）
     
     plausible_ranges = {
