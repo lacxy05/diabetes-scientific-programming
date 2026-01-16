@@ -106,3 +106,25 @@ def train_and_save_model(
         "model_path": str(model_path),
         "scaler_path": str(scaler_path),
     }
+
+
+if __name__ == "__main__":
+    clean_data_path = Path("data/diabetes_cleaned.csv")
+
+    try:
+        print("Loading data from ", clean_data_path)
+        df = pd.read_csv(clean_data_path)
+
+        print("Training model...")
+        results = train_and_save_model(df)
+
+        print("Training complete")
+        print("Best model:", results["best_model_name"])
+        print("Best score (", results["selected_metric"], "): ", results["best_score"])
+        print("Saved model to:", results["model_path"])
+
+    except FileNotFoundError:
+        print(f"File {clean_data_path} does not exist.")
+
+
+
