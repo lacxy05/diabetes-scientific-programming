@@ -18,7 +18,7 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
+from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
@@ -46,25 +46,10 @@ def _pick_scaler(scaler_type: str):
 
 
 def _metric_name(select_by: str) -> str:
-    if select_by in {"roc_auc", "accuracy", "f1"}:
+    # Fixed: Added comma between "recall" and "accuracy"
+    if select_by in {"roc_auc", "accuracy", "f1", "recall"}:
         return select_by
-    raise ValueError("select_by must be 'roc_auc', 'accuracy', or 'f1'")
-
-
-def _score_on_test(
-    pipeline: Pipeline,
-    X_test: pd.DataFrame,
-    y_test: pd.Series,
-) -> Dict[str, float]:
-
-    proba = pipeline.predict_proba(X_test)[:, 1]
-    preds = pipeline.predict(X_test)
-
-    return {
-        "roc_auc": float(roc_auc_score(y_test, proba)),
-        "accuracy": float(accuracy_score(y_test, preds)),
-        "f1": float(f1_score(y_test, preds)),
-    }
+    raise ValueError("select_by must be 'roc_auc', 'accuracy', 'f1' or 'recall'")
 
 
 def tune_threshold(
@@ -140,9 +125,8 @@ def extract_rf_importance(
 # ============================================================
 
 def train_and_save_model_cv(
-    df: pd.DataFrame,
+    train_df: pd.DataFrame,
     *,
-    test_size: float = 0.2,
     random_state: int = 42,
     scaler_type: str = "standard",
     select_by: str = "roc_auc",
@@ -150,28 +134,20 @@ def train_and_save_model_cv(
     save_paths: Tuple[Path, Path] = (PIPELINE_PATH, META_PATH),
 ) -> Dict[str, Any]:
 
-    if "Outcome" not in df.columns:
+    if "Outcome" not in train_df.columns:
         raise ValueError("Expected target column 'Outcome'")
 
-    y = df["Outcome"].astype(int)
-    X = df.drop(columns=["Outcome", "subject_id"], errors="ignore")
+    # ------------------------------
+    # Prepare Training Data
+    # ------------------------------
+    y_train = train_df["Outcome"].astype(int)
+    X_train = train_df.drop(columns=["Outcome", "subject_id"], errors="ignore")
 
-    if X.isna().any().any():
-        raise ValueError("X contains NaNs")
+    if X_train.isna().any().any():
+        raise ValueError("X_train contains NaNs")
 
     metric = _metric_name(select_by)
     scaler = _pick_scaler(scaler_type)
-
-    # ------------------------------
-    # Train / Test split
-    # ------------------------------
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        stratify=y,
-        random_state=random_state,
-    )
 
     cv = StratifiedKFold(
         n_splits=cv_splits,
@@ -261,8 +237,9 @@ def train_and_save_model_cv(
     best_cv_score = per_model_best[best_model_name]["best_cv_score"]
 
     # ------------------------------
-    # Threshold tuning (training only)
+    # Threshold tuning (Internal split)
     # ------------------------------
+    # We split the training data internally just to find the best threshold
     X_train_sub, X_val, y_train_sub, y_val = train_test_split(
         X_train,
         y_train,
@@ -281,13 +258,9 @@ def train_and_save_model_cv(
     )
 
     # ------------------------------
-    # Final test evaluation
+    # CRITICAL: Refit on FULL training data
     # ------------------------------
-    test_scores = _score_on_test(
-        best_pipeline,
-        X_test,
-        y_test,
-    )
+    best_pipeline.fit(X_train, y_train)
 
     # ------------------------------
     # Feature importance
@@ -297,13 +270,13 @@ def train_and_save_model_cv(
     if best_model_name == "logreg":
         feature_info = extract_logreg_coefficients(
             best_pipeline,
-            list(X.columns),
+            list(X_train.columns),
         )
 
     elif best_model_name == "random_forest":
         feature_info = extract_rf_importance(
             best_pipeline,
-            list(X.columns),
+            list(X_train.columns),
         )
 
     # ------------------------------
@@ -318,9 +291,9 @@ def train_and_save_model_cv(
         "best_model_name": best_model_name,
         "selected_metric": metric,
         "best_cv_score": best_cv_score,
-        "test_scores": test_scores,
+        "test_scores": None,  # Evaluation is done in the notebook now
         "threshold": threshold_info,
-        "feature_columns": list(X.columns),
+        "feature_columns": list(X_train.columns),
         "feature_importance": (
             feature_info.to_dict(orient="records")
             if feature_info is not None
@@ -329,7 +302,6 @@ def train_and_save_model_cv(
         "per_model_best": per_model_best,
         "scaler_type": scaler_type,
         "cv_splits": cv_splits,
-        "test_size": test_size,
         "random_state": random_state,
     }
 
@@ -338,7 +310,6 @@ def train_and_save_model_cv(
     return {
         "best_model_name": best_model_name,
         "best_cv_score": best_cv_score,
-        "test_scores": test_scores,
         "threshold": threshold_info,
         "pipeline_path": str(pipeline_path),
         "meta_path": str(meta_path),
@@ -351,17 +322,17 @@ def train_and_save_model_cv(
 
 if __name__ == "__main__":
 
-    data_path = Path("data/diabetes_cleaned.csv")
-
-    print("Loading data:", data_path)
-    df = pd.read_csv(data_path)
+    # Load the specific training split created by your other script
+    train_path = Path("data/train_split.csv")
+    
+    print(f"Loading training data: {train_path}")
+    train_df = pd.read_csv(train_path)
 
     print("Training (CV-based)...")
-    results = train_and_save_model_cv(df)
+    results = train_and_save_model_cv(train_df, select_by="f1")
 
     print("\nTraining complete ✅")
     print("Best model:", results["best_model_name"])
     print("Best CV score:", results["best_cv_score"])
-    print("Test scores:", results["test_scores"])
     print("Threshold:", results["threshold"])
     print("Saved pipeline to:", results["pipeline_path"])

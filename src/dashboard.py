@@ -19,18 +19,21 @@ with st.sidebar:
     api_uri = st.text_input("API Endpoint", value=DEFAULT_API_URL)
     
     st.markdown("---")
-    st.markdown("### Model Sensitivity")
-
-    threshold = st.slider(
-        "Decision Threshold", 
-        min_value=0.0, 
-        max_value=1.0, 
-        value=0.5, 
-        step=0.05,
-        help="Adjust the probability cutoff. Lower values increase sensitivity (catching more positive cases)."
+    st.caption(
+        """
+        **Note:** This system uses an optimized 
+        decision threshold derived from training data.
+        """
     )
+    st.info(
+
+        """
+        **Disclaimer:** This system utilizes a machine learning model to estimate risk. 
+        As an AI tool, it **may produce errors** and predictions are probabilistic. 
+        This is a support tool and does **not** replace professional medical advice or diagnosis.
+        """
     
-    st.markdown("---")
+    )
     st.caption("Scientific Programming Final Project")
     st.caption("MSc in Health Data Science (MHEDAS)")
 
@@ -61,22 +64,14 @@ with st.form("prediction_form"):
     
     with col1:
         st.markdown("#### Demographics")
-        # Slider is good for Age
         age = st.slider("Age (Years)", min_value=21, max_value=100, value=30, step=1)
-        
-        # Number input is better for Pregnancies (discrete integer)
         pregnancies = st.number_input("Pregnancies", min_value=0, max_value=20, value=0, step=1)
-        
-        # Slider is intuitive for BMI
         bmi = st.slider("BMI (kg/m²)", min_value=10.0, max_value=80.0, value=25.0, format="%.1f")
 
     with col2:
         st.markdown("#### Metabolic profile")
-        # Number input is better here because the range is huge (0-600/900) and specific values matter
         glucose = st.number_input("Glucose (mg/dL)", min_value=40, max_value=600, value=100, step=1)
         insulin = st.number_input("Insulin (mu U/ml)", min_value=0, max_value=900, value=80, step=1)
-        
-        # Number input for precision with Pedigree Function
         dpf = st.number_input(
             "Diabetes pedigree function", 
             min_value=0.0, max_value=3.0, value=0.5, step=0.01, format="%.3f",
@@ -85,7 +80,6 @@ with st.form("prediction_form"):
 
     with col3:
         st.markdown("#### Vitals and skin")
-        # Sliders work well here
         bp = st.slider("Blood pressure (mm Hg)", min_value=30, max_value=150, value=70, step=1)
         skin_thickness = st.slider("Skin thickness (mm)", min_value=5, max_value=100, value=20, step=1)
 
@@ -114,15 +108,16 @@ if submitted:
         # 3. Handle Response
         if response.status_code == 200:
             result = response.json()
-            prob = result["probability"]
             
-            # Custom Logic based on Sidebar Threshold
-            diagnosis_text = "Diabetes" if prob >= threshold else "No Diabetes"
+            # --- Extract Data from API ---
+            # The API now does the heavy lifting
+            prob = result["probability"]
+            diagnosis_text = result["diagnosis"]          # e.g., "Diabetes"
+            threshold_used = result.get("threshold_used", 0.5) # Default to 0.5 if missing
             
             # --- RESULTS SECTION ---
             st.markdown("### Diagnostic assessment")
             
-            # Layout for results
             r_col1, r_col2 = st.columns([1, 2])
             
             with r_col1:
@@ -132,20 +127,26 @@ if submitted:
                 else:
                     st.success(f"**Prediction:** {diagnosis_text}")
                 
-                st.metric("Probability", f"{prob*100:.1f}%")
+                st.metric("Probability Score", f"{prob*100:.1f}%")
             
             with r_col2:
-                st.markdown(f"**Risk analysis (Threshold: {threshold})**")
-                # Progress bar shows the raw probability
+                st.markdown(f"**Risk Analysis** (Optimized Threshold: `{threshold_used:.2f}`)")
+                
+                # Visual logic
+                if prob > threshold_used:
+                    st.warning(f"The calculated risk ({prob:.2f}) exceeds the clinical threshold.")
+                else:
+                    st.info(f"The calculated risk ({prob:.2f}) is within safe limits.")
+                
+                # Custom Progress Bar with Threshold Marker
+                # We create a visual representation of where the probability sits vs the threshold
                 st.progress(prob)
                 
-                if prob > threshold:
-                    st.warning(f"The model estimates a risk of **{prob:.2f}**, which is above your set threshold of {threshold}.")
-                else:
-                    st.info(f"The model estimates a risk of **{prob:.2f}**, which is below your set threshold of {threshold}.")
+                # Small legend
+                st.caption(f"0.0 {'&nbsp;'*10} ▲ Threshold ({threshold_used}) {'&nbsp;'*10} 1.0")
 
         else:
             st.error(f"Server error {response.status_code}: {response.text}")
             
     except requests.exceptions.ConnectionError:
-        st.error("Connection error: Unable to reach the API. Please ensure 'app.py' is running.") 
+        st.error("Connection error: Unable to reach the API. Please ensure 'app.py' is running.")
