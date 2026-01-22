@@ -45,7 +45,7 @@ def predict_diabetes(patient: PatientData):
     )
 
     
-    prob = pipeline.predict_proba(df_scaled)[0][1]
+    prob = pipeline.predict_proba(df)[0][1]
     prediction = "Diabetes" if prob >= best_threshold else "No Diabetes"
 
     return {
