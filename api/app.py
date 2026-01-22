@@ -8,12 +8,13 @@ app = FastAPI(title="Diabetes Prediction API")
 
 dire = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-model_aux = os.path.join(dire, "models", "model.pkl")
-scaler_aux = os.path.join(dire, "models", "scaler.pkl")
+pipeline_path = os.path.join(dire, "models", "pipeline.pkl")
+meta_path = os.path.join(dire, "models", "meta.pkl")
 
-model = joblib.load(model_aux)
-scaler = joblib.load(scaler_aux)
+pipeline = joblib.load(pipeline_path)
+meta = joblib.load(meta_path)
 
+best_threshold = meta["threshold"]["best_threshold"]
 
 feature = [
     "Pregnancies",
@@ -43,17 +44,16 @@ def predict_diabetes(patient: PatientData):
         columns=feature
     )
 
-   
-    df_scaled = pd.DataFrame(
-        scaler.transform(df),
-        columns=feature
-    )
-
     
-    prob = model.predict_proba(df_scaled)[0][1]
-    prediction = "Diabetes" if prob >= 0.5 else "No Diabetes"
+    prob = pipeline.predict_proba(df_scaled)[0][1]
+    prediction = "Diabetes" if prob >= best_threshold else "No Diabetes"
 
     return {
         "diagnosis": prediction,
-        "probability": round(float(prob), 2)
+        "probability": round(float(prob), 2),
+        "threshold_used": best_threshold
     }
+
+@app.get("/")
+def root():
+    return {"message": "API is running"}
