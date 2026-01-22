@@ -38,7 +38,6 @@ class PatientData(BaseModel):
 
 @app.post("/predict")
 def predict_diabetes(patient: PatientData):
-    # Crear DataFrame en el orden correcto
     df = pd.DataFrame(
         [[getattr(patient, col) for col in feature]],
         columns=feature
