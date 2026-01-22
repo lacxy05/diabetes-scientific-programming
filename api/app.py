@@ -53,3 +53,7 @@ def predict_diabetes(patient: PatientData):
         "probability": round(float(prob), 2),
         "threshold_used": best_threshold
     }
+
+@app.get("/")
+def root():
+    return {"message": "API is running"}
