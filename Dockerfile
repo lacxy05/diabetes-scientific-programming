@@ -9,5 +9,5 @@ RUN pip install --no-cache-dir pandas scikit-learn fastapi uvicorn joblib stream
 EXPOSE 8000
 EXPOSE 8501
 
-# Lancer le script d'entrée
+# Run the entrypoint script
 CMD ["./entrypoint.sh"]
