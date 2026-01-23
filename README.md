@@ -69,18 +69,19 @@ pip install -r requirements.txt
 
 ## Docker Deployment
 
-### Build and run with Docker
+Pull and run the pre-built image from GitHub Container Registry:
+
 ```bash
-# Build the Docker image
-docker build -t diabetes-prediction .
+# Pull the image
+docker pull ghcr.io/pantherpale-svg/fastapi-streamlit-app:v1
 
 # Run the container
-docker run -p 8000:8000 -p 8501:8501 diabetes-prediction
+docker run -p 8000:8000 -p 8501:8501 ghcr.io/pantherpale-svg/fastapi-streamlit-app:v1
 ```
 
 The application will be accessible at:
-- API: http://localhost:8000
-- Dashboard: http://localhost:8501
+- **FastAPI documentation**: http://localhost:8000/docs
+- **Streamlit interface**: http://localhost:8501
 
 ---
 
