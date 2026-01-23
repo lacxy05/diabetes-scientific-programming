@@ -1,0 +1,247 @@
+Task7 steps:
+
+First part: Containerization using Docker
+
+# Use of Ubuntu through Windows Subsystem for Linux (WSL):
+
+Ubuntu was used as the development environment through the Windows Subsystem for Linux (WSL), which provides native access to Linux tools within Windows without requiring a virtual machine. This choice ensures better compatibility with Docker and open-source development tools, improves system stability, and aligns the development environment with typical production systems, which are predominantly Linux-based.
+
+After installing Ubuntu on WSL, all development tasks were performed within the Linux terminal. The workflow included cloning the GitHub repository, creating the Dockerfile and entrypoint script, committing and pushing the changes to a dedicated branch, building the Docker image, and running the container with appropriate port mapping to expose the FastAPI and Streamlit services on the host machine.
+
+# Containerization and Version Control of a FastAPI–Streamlit Application on Linux
+1. Introduction
+
+The objective of this work was to containerize a Python-based application composed of a FastAPI backend and a Streamlit frontend, and to manage the project using GitHub for version control. Containerization ensures portability, reproducibility, and ease of deployment across different environments, while GitHub enables collaborative development, version tracking, and code sharing.
+All operations were performed on a Linux environment using the command line interface.
+
+2. Environment Setup
+2.1 Git Installation and Configuration
+
+First, Git was verified and configured to ensure proper version control:
+
+git --version
+git config --global user.name "UserName"
+git config --global user.email "user@email.com"
+
+
+The project repository was cloned from GitHub:
+
+git clone https://github.com/lacxy05/diabetes-scientific-programming
+cd diabetes-scientific-programming
+
+
+A dedicated feature branch was used to isolate development work:
+
+git switch -c features-task7-Rajae
+
+2.2 Docker Installation and Login
+
+Docker was installed and enabled on the Linux system:
+
+sudo apt install docker.io
+sudo systemctl start docker
+sudo systemctl enable docker
+
+
+Docker installation was verified:
+
+docker --version
+
+
+The user authenticated to Docker Hub in order to enable image publishing:
+
+docker login
+
+3. Project Structure Verification
+
+The project structure was verified to ensure the presence of the application modules and dependencies:
+ls
+
+Files included: README.md  api  config.py  data  models  plots  src
+
+4. Creation of Docker Configuration Files
+4.1 Entry Point Script
+
+An executable shell script was created to start both FastAPI and Streamlit services inside the container:
+
+nano entrypoint.sh
+
+
+Content of the file:
+
+#!/bin/bash
+# Launch FastAPI and Streamlit in the same container
+
+# Start FastAPI in the background
+uvicorn api.app:app --host 0.0.0.0 --port 8000 &
+
+# Start Streamlit in the foreground
+streamlit run src/dashboard.py --server.port 8501 --server.address 0.0.0.0
+
+The script was made executable:
+
+chmod +x entrypoint.sh
+
+4.2 Dockerfile
+
+A Dockerfile was created to define the container image:
+
+nano Dockerfile
+
+Content of the file:
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY . .
+
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir pandas scikit-learn fastapi uvicorn joblib streamlit requests
+
+EXPOSE 8000
+EXPOSE 8501
+
+# Run the entrypoint script
+CMD ["./entrypoint.sh"]
+
+This file specifies the base image, working directory, dependency installation, application copy, exposed ports, and startup command.
+
+4.3 Requirements
+The requirements.txt file contains a list of all the Python libraries required to run the project
+
+nano requirements.txt
+
+Content of the file:
+
+uvicorn
+fastapi
+pydantic
+joblib
+pandas
+requests
+
+5. Version Control and GitHub Integration
+
+The new configuration files were added to the Git repository:
+
+git add Dockerfile entrypoint.sh requirements.txt
+git commit -m "Add Docker configuration for FastAPI and Streamlit"
+git push origin features-task7-Rajae
+
+
+Authentication was performed using a GitHub Personal Access Token, as password authentication is no longer supported.
+
+6. Docker Image Build
+
+The Docker image was built locally using the following command:
+
+docker build -t fastapi-streamlit-app .
+
+
+After successful completion, the image was verified:
+
+docker images
+
+7. Container Execution and Port Mapping  
+
+The container was executed with port mapping to expose the services to the host machine:
+
+docker run -p 8000:8000 -p 8501:8501 fastapi-streamlit-app
+
+
+The application became accessible through the browser:
+
+FastAPI documentation:
+http://localhost:8000/docs
+
+Streamlit interface:
+http://localhost:8501
+
+The running containers were monitored using:
+
+docker ps
+
+8. Image Persistence and Reuse
+
+Docker images remain stored locally even after system shutdown. container ID: b14f6fb7eec8. To verify the availability of images:
+
+docker images
+
+The application can be restarted without rebuilding the image:
+
+docker run -p 8000:8000 -p 8501:8501 fastapi-streamlit-app
+
+9. Conclusion
+
+This workflow demonstrates a complete pipeline for managing a data-driven application using GitHub for version control and Docker for containerization. The approach guarantees reproducibility, simplifies deployment, and allows the application to be executed consistently across different environments. The use of Docker images ensures persistence and easy reuse, while GitHub enables collaborative development and traceability of changes.
+
+
+
+Second part: Local Deployement
+1- Tag the Image for GitHub Registry:
+docker tag diabetes-app:latest ghcr.io/pantherpale-svg/fastapi-streamlit-app:v1/diabetes-app:v1
+
+2-Push the Image to GitHub
+echo "<GITHUB_TOKEN>" | docker login ghcr.io -u pantherpale-svg --password-stdin
+docker push ghcr.io/pantherpale-svg/fastapi-streamlit-app:v1/diabetes-app:v1
+
+The image is publicly available in the Packages section
+Image name: fastapi-streamlit-app
+
+3-Download and Run the Application Locally
+docker pull ghcr.io/pantherpale-svg/fastapi-streamlit-app:v1
+docker run -p 8000:8000 -p 8501:8501 ghcr.io/pantherpale-svg/fastapi-streamlit-app:v1
+
+FastAPI documentation:
+http://localhost:8000/docs
+
+Streamlit interface:
+http://localhost:8501
+
+I attempted to deploy the application on cloud platforms using free services such as GitHub Pages and Vercel. Since Vercel does not support Streamlit, I separated the backend and frontend components, but the deployment still did not work. However, these platforms were ultimately not suitable because our application is dynamic rather than static.
+I also explored other cloud providers, including Render, Fly.io, and several others, but they require a paid subscription to complete the deployment.
+
+Third part: Deployement test
+test API 1:
+c_play007@DESKTOP-NSIRP10:~$ curl -X POST "http://localhost:8000/predict" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "Pregnancies": 2,
+           "Glucose": 120,
+           "BloodPressure": 70,
+           "SkinThickness": 20,
+           "Insulin": 79,
+           "BMI": 28.5,
+           "DiabetesPedigreeFunction": 0.5,
+           "Age": 33
+         }'
+{"diagnosis":"No Diabetes","probability":0.23}c_play007@DESKTOP-NSIRP10:~$
+
+
+
+test API 2:
+c_play007@DESKTOP-NSIRP10:~$ docker logs -f b14f6fb7eec8
+
+Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
+
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://0.0.0.0:8501
+
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.4.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/usr/local/lib/python3.9/site-packages/sklearn/base.py:380: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.4.2 when using version 1.6.1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+INFO:     Started server process [7]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     172.17.0.1:45910 - "GET /docs HTTP/1.1" 200 OK
+INFO:     172.17.0.1:45910 - "GET /openapi.json HTTP/1.1" 200 OK
+/usr/local/lib/python3.9/site-packages/sklearn/utils/validation.py:2732: UserWarning: X has feature names, but LogisticRegression was fitted without feature names
+  warnings.warn(
+INFO:     172.17.0.1:34034 - "POST /predict HTTP/1.1" 200 OK
+
+The successful execution of these tests confirms that the API is fully operational
